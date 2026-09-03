@@ -1,0 +1,39 @@
+CUDA Driver Version:           12060
+NVRM version:                  NVIDIA UNIX x86_64 Kernel Module  560.35.03  Fri Aug 16 21:39:15 UTC 2024
+Device Number:                 0
+Device Name:                   NVIDIA H100 80GB HBM3
+Device Revision Number:        9.0
+Global Memory Size:            85049802752
+Number of Multiprocessors:     132
+Concurrent Copy and Execution: Yes
+Total Constant Memory:         65536
+Total Shared Memory per Block: 49152
+Registers per Block:           65536
+Warp Size:                     32
+Maximum Threads per Block:     1024
+Maximum Block Dimensions:      1024, 1024, 64
+Maximum Grid Dimensions:       2147483647 x 65535 x 65535
+Maximum Memory Pitch:          2147483647B
+Texture Alignment:             512B
+Clock Rate:                    1980 MHz
+Execution Timeout:             No
+Integrated Device:             No
+Can Map Host Memory:           Yes
+Compute Mode:                  default
+Concurrent Kernels:            Yes
+ECC Enabled:                   Yes
+Memory Clock Rate:             2619 MHz
+Memory Bus Width:              5120 bits
+L2 Cache Size:                 52428800 bytes
+Max Threads Per SMP:           2048
+Async Engines:                 3
+Unified Addressing:            Yes
+Managed Memory:                Yes
+Concurrent Managed Memory:     Yes
+Preemption Supported:          Yes
+Cooperative Launch:            Yes
+Cluster Launch:                Yes
+Unified Function Pointers:     Yes
+Unified Memory:                No
+Memory Models Flags:           -gpu=mem:separate, -gpu=mem:managed
+Default Target:                cc90

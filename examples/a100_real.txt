@@ -1,0 +1,37 @@
+CUDA Driver Version:           13020
+NVRM version:                  NVIDIA UNIX x86_64 Kernel Module  595.71.05  Fri Apr 24 06:36:12 UTC 2026
+Device Number:                 0
+Device Name:                   NVIDIA A100-SXM4-40GB
+Device Revision Number:        8.0
+Global Memory Size:            42405855232
+Number of Multiprocessors:     108
+Concurrent Copy and Execution: Yes
+Total Constant Memory:         65536
+Total Shared Memory per Block: 49152
+Registers per Block:           65536
+Warp Size:                     32
+Maximum Threads per Block:     1024
+Maximum Block Dimensions:      1024, 1024, 64
+Maximum Grid Dimensions:       2147483647 x 65535 x 65535
+Maximum Memory Pitch:          2147483647B
+Texture Alignment:             512B
+Clock Rate:                    1410 MHz
+Execution Timeout:             No
+Integrated Device:             No
+Can Map Host Memory:           Yes
+Compute Mode:                  default
+Concurrent Kernels:            Yes
+ECC Enabled:                   Yes
+Memory Clock Rate:             1215 MHz
+Memory Bus Width:              5120 bits
+L2 Cache Size:                 41943040 bytes
+Max Threads Per SMP:           2048
+Async Engines:                 5
+Unified Addressing:            Yes
+Managed Memory:                Yes
+Concurrent Managed Memory:     Yes
+Preemption Supported:          Yes
+Cooperative Launch:            Yes
+Unified Memory:                No
+Memory Models Flags:           -gpu=mem:separate, -gpu=mem:managed
+Default Target:                cc80
