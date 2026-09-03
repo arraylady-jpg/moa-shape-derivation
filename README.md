@@ -32,12 +32,12 @@ introduce a new one.
 
 | File | What it does |
 |---|---|
-| `moa_shape_parser.py` | Parses `nvaccelinfo` output into a structured `MachineShape` |
+| `moa_shape_parser.py` | Parses `nvaccelinfo` (NVIDIA) or `rocminfo` (AMD) output into a structured, vendor-neutral `MachineShape` |
 | `moa_derive_params.py` | Derives OpenACC kernel parameters (`num_workers`, `vector_length`, tile size) from a `MachineShape` |
 | `moa_generate_kernel.py` | Generates a complete, compilable OpenACC kernel file from those derived parameters |
 | `moa_forward_openacc_template.c` | The kernel template — a real, hardware-validated attention kernel with its machine-derived values as placeholders |
-| `test_moa_automation.py` | Automated tests, including a real compile-and-run check on generated output |
-| `examples/` | Real, captured `nvaccelinfo` output from three GPU generations, and one example generated kernel |
+| `test_moa_automation.py` | Automated tests (16), including a real compile-and-run check on generated output |
+| `examples/` | Real, captured `nvaccelinfo` output from three NVIDIA GPU generations; a `rocminfo` fixture built from AMD's documented format; one example generated kernel |
 
 ## Quick start
 
@@ -60,17 +60,45 @@ To measure a real GPU on a machine with the NVIDIA HPC SDK installed:
 python3 moa_shape_parser.py          # runs nvaccelinfo directly and parses its output
 ```
 
+Or, on a machine with ROCm installed:
+
+```bash
+python3 moa_shape_parser.py --rocm   # runs rocminfo directly and parses its output
+```
+
 ## Status
 
 This is an early-stage research prototype, not production tooling.
 It currently:
 
-- **Supports:** NVIDIA GPUs via `nvaccelinfo`, OpenACC kernel generation, one operator (Transformer attention forward pass).
-- **Does not yet support:** AMD GPUs (`rocminfo` parsing is planned but not implemented), operators other than attention, or OpenMP/OpenMPI targets.
-- **Known, stated assumption:** the derivation for `num_workers` assumes 4 warp schedulers per SM, an architectural constant consistent across every NVIDIA GPU generation tested (Volta, Ampere, Hopper) but not something `nvaccelinfo` reports directly — this is exposed as an explicit function parameter (`schedulers_per_sm`) rather than a hidden constant, precisely so it stays visible rather than silently assumed.
+- **Supports:** NVIDIA GPUs via `nvaccelinfo`, and a first prototype
+  of AMD GPU support via `rocminfo` (parser built from AMD's own
+  documented output format, tested against a fixture built from that
+  documentation and real, publicly posted examples — **not yet
+  validated against real captured output from a real MI100 or other
+  AMD accelerator**; that validation is the immediate next step now
+  that AMD GPU cluster access is in progress).
+- **A genuinely interesting early result:** applied to AMD's
+  documented shape (wider 64-wide wavefronts, larger measured LDS
+  capacity than NVIDIA's shared memory per block), the same
+  derivation produces a *different* tile size (32×16, not NVIDIA's
+  16×16) — real evidence the derivation responds to actual measured
+  hardware rather than coincidentally always returning the same
+  answer.
+- **A flagged, unresolved question for AMD specifically:** the
+  `num_workers`-equivalent derivation still uses the
+  `schedulers_per_sm=4` assumption carried over from NVIDIA, never
+  validated for AMD's architecture. Interestingly, `rocminfo` directly
+  *reports* a field called `SIMDs per CU` (4, in every fixture
+  checked so far) — a genuinely measured AMD analog, rather than an
+  assumption, that this parser does not yet extract or use. Using it
+  instead of the carried-over NVIDIA assumption is a concrete,
+  well-scoped next step.
+- **Does not yet support:** operators other than attention, or
+  OpenMP/OpenMPI targets.
 
-Cross-vendor validation (AMD, via `rocminfo`) is the immediate next
-target.
+Real-hardware AMD validation (Delta's MI100 partition, via ACCESS) is
+the immediate next target.
 
 ## License
 

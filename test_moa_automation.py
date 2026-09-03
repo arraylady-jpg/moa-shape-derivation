@@ -159,5 +159,65 @@ class TestKernelGeneration(unittest.TestCase):
                           f"not pass. Output:\n{run_result.stdout}")
 
 
+class TestROCmParsing(unittest.TestCase):
+    """Validates the rocminfo parser against a fixture built from
+    AMD's own documented, real output format (not a guessed one --
+    see moa_shape_parser.py's parse_rocminfo docstring). This is
+    NOT yet validated against real captured output from this
+    project's actual target hardware (Delta's MI100 partition) --
+    that is the immediate next step once cluster access allows it."""
+
+    def _shape(self):
+        from moa_shape_parser import parse_rocminfo
+        with open("examples/rocminfo_example_gfx906.txt") as f:
+            return parse_rocminfo(f.read())
+
+    def test_selects_gpu_agent_not_cpu_agent(self):
+        """rocminfo lists CPU and GPU agents together in one output --
+        confirm the parser picks the GPU, not the Ryzen CPU listed
+        first in the same fixture."""
+        shape = self._shape()
+        self.assertEqual(shape.device_name, "gfx906")
+        self.assertNotIn("Ryzen", shape.device_name)
+
+    def test_measured_values_match_fixture(self):
+        shape = self._shape()
+        self.assertEqual(shape.sms, 60)
+        self.assertEqual(shape.warp_size, 64)  # AMD's wavefront, wider than NVIDIA's 32
+        self.assertEqual(shape.max_threads_per_sm, 2560)
+        self.assertEqual(shape.shared_mem_per_block_bytes, 65536)  # 64 KiB LDS
+        self.assertEqual(shape.l2_cache_bytes, 4194304)  # 4096 KiB
+
+    def test_internal_consistency_with_amd_own_reported_value(self):
+        """AMD's own rocminfo output independently reports "Max Waves
+        Per CU: 40" for this fixture. This parser derives
+        max_warps_per_sm from two OTHER fields (max_threads_per_sm /
+        warp_size) entirely independently -- if the field mapping
+        were wrong, these would not be expected to agree."""
+        shape = self._shape()
+        self.assertEqual(shape.max_warps_per_sm, 40)
+
+    def test_derivation_produces_a_genuinely_different_result_than_nvidia(self):
+        """Confirms the derivation is actually responding to measured
+        shape, not coincidentally always returning NVIDIA's values.
+        AMD's wider wavefront and larger measured LDS capacity should
+        produce a different vector_length and, given more available
+        shared memory, room for a larger tile than NVIDIA's 16x16."""
+        shape = self._shape()
+        params = derive_openacc_params(shape, head_dim=64, dtype="fp64")
+        self.assertEqual(params.vector_length, 64)
+        self.assertNotEqual((params.block_m, params.block_n), (16, 16))
+
+    def test_missing_gpu_agent_raises(self):
+        cpu_only = (
+            "*******\nAgent 1\n*******\n"
+            "  Name:                    Some CPU\n"
+            "  Device Type:             CPU\n"
+        )
+        with self.assertRaises(ValueError):
+            from moa_shape_parser import parse_rocminfo
+            parse_rocminfo(cpu_only)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
