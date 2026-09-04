@@ -109,22 +109,26 @@ def derive_openacc_params(shape: MachineShape, head_dim: int, dtype: str,
 
 if __name__ == "__main__":
     import sys
-    from moa_shape_parser import parse_nvaccelinfo
+    from moa_shape_parser import parse_nvaccelinfo, parse_rocminfo
 
     if len(sys.argv) < 2:
-        print("Usage: python3 moa_derive_params.py <nvaccelinfo_output.txt> "
-              "[--dtype fp64] [--head-dim 64]")
+        print("Usage: python3 moa_derive_params.py <shape_output.txt> "
+              "[--rocm] [--dtype fp64] [--head-dim 64]")
         sys.exit(1)
 
     dtype = "fp64"
     head_dim = 64
+    use_rocm = "--rocm" in sys.argv
+    if use_rocm:
+        sys.argv.remove("--rocm")
     if "--dtype" in sys.argv:
         dtype = sys.argv[sys.argv.index("--dtype") + 1]
     if "--head-dim" in sys.argv:
         head_dim = int(sys.argv[sys.argv.index("--head-dim") + 1])
 
     with open(sys.argv[1]) as f:
-        shape = parse_nvaccelinfo(f.read())
+        text = f.read()
+    shape = parse_rocminfo(text) if use_rocm else parse_nvaccelinfo(text)
 
     params = derive_openacc_params(shape, head_dim=head_dim, dtype=dtype)
 

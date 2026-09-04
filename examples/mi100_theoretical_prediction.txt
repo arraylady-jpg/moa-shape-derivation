@@ -1,0 +1,37 @@
+# THEORETICAL PREDICTION, not a real rocminfo capture.
+# Built from AMD's own published documentation:
+#   https://rocm.docs.amd.com/en/docs-6.1.1/reference/gpu-arch-specs.html
+#   https://rocm.docs.amd.com/en/docs-5.7.0/understand/gpu_arch/mi100.html
+# Confirmed, high-confidence values (stated directly in multiple
+# independent AMD sources):
+#   Compute Units: 120
+#   Wavefront Size: 64
+#   LDS (shared memory per CU): 64 KiB
+#   SIMDs per CU: 4
+# EXTRAPOLATED, lower-confidence value (not independently confirmed
+# for MI100 specifically -- carried over from this project's gfx906
+# fixture, same CDNA/GCN architecture family, same "40 max waves per
+# CU" pattern):
+#   Max Work-item Per CU: 2560 (=> 40 max waves per CU, matching gfx906)
+# L2 cache read from AMD's spec table with only moderate confidence
+# (the scraped table had ambiguous column alignment for this row):
+#   L2 Cache: 8 MiB
+*******
+Agent 2
+*******
+  Name:                    gfx908
+  Marketing Name:          AMD Instinct MI100 (predicted spec, not yet confirmed via real rocminfo)
+  Vendor Name:             AMD
+  Device Type:             GPU
+  Cache Info:
+    L2:                      8192(0x2000) KB
+  Compute Unit:            120
+  SIMDs per CU:            4
+  Wavefront Size:          64(0x40)
+  Workgroup Max Size:      1024(0x400)
+  Max Waves Per CU:        40(0x28)
+  Max Work-item Per CU:    2560(0xa00)
+  Pool Info:
+    Pool 2
+      Segment:                 GROUP
+      Size:                    64(0x40) KB
