@@ -26,6 +26,7 @@ from .moa_shape_parser import (
 )
 from .moa_derive_params import derive_openacc_params
 from .moa_generate_kernel import generate_kernel
+from .moa_energy_profiler import measure_energy
 
 
 def _measure_shape(args):
@@ -114,6 +115,26 @@ def cmd_contribute(args):
     print("current, exact submission process.")
 
 
+def cmd_energy(args):
+    """Measure real energy consumption of a repeated kernel run.
+
+    NOT a prediction -- a measurement. See moa_energy_profiler.py's
+    module docstring for why this measures a SUSTAINED, REPEATED run
+    rather than a single kernel launch, and for what has and has not
+    been validated against real hardware yet.
+    """
+    result = measure_energy(
+        command=args.command, min_duration_s=args.duration,
+        rocm=args.rocm, poll_interval_s=args.poll_interval,
+    )
+    print(f"Ran {result.iterations_run} iterations over "
+          f"{result.duration_seconds:.2f}s ({result.num_power_samples} power samples)")
+    print(f"Average power:        {result.average_power_watts:.2f} W")
+    print(f"Total energy:         {result.total_energy_joules:.2f} J")
+    print(f"Energy per iteration: {result.energy_per_iteration_joules:.4f} J "
+          f"(average over the sustained run, not a single-launch measurement)")
+
+
 def main():
     parser = argparse.ArgumentParser(prog="moa-shape",
                                       description="Derive GPU kernel parameters from measured hardware shape.")
@@ -143,6 +164,15 @@ def main():
         if name == "contribute":
             p.add_argument("--output", "-o", default=None, help="Output JSON path (default: auto-named).")
         p.set_defaults(func=func)
+
+    p_energy = sub.add_parser("energy", help="Measure real GPU energy consumption of a repeated kernel run (NOT yet a prediction -- a measurement).")
+    p_energy.add_argument("command", nargs=argparse.REMAINDER,
+                           help="The kernel command to run repeatedly, e.g.: moa-shape energy -- ./my_kernel")
+    p_energy.add_argument("--duration", type=float, default=5.0,
+                           help="Minimum sustained run duration in seconds (default 5.0 -- see moa_energy_profiler.py for why this must not be too short).")
+    p_energy.add_argument("--poll-interval", type=float, default=0.1,
+                           help="Power-sampling poll interval in seconds (default 0.1; the underlying sensor itself updates at ~1 Hz regardless).")
+    p_energy.set_defaults(func=cmd_energy)
 
     args = parser.parse_args()
     args.func(args)

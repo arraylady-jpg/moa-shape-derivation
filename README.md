@@ -79,11 +79,23 @@ moa-shape measure    [file] [--rocm]                       # print a shape, meas
 moa-shape derive     [file] [--rocm] [--dtype fp64] [--head-dim 64]
 moa-shape generate   [file] [--rocm] -o kernel.c [--dtype fp64] [--head-dim 64]
 moa-shape contribute [file] [--rocm] [-o out.json]          # see "Help this project" above
+moa-shape energy -- <command...> [--duration 5.0]           # measure real GPU energy of a repeated kernel run
 ```
 
 Omit `[file]` to measure the local GPU directly (requires
 `nvaccelinfo` or `rocminfo`, respectively, on PATH). Pass a saved
 output file instead to work from a capture made elsewhere.
+
+`energy` measures, it does not yet predict: this project's existing
+time-based cost functions are fit to real measurement (R² > 0.999);
+no equivalent energy-based cost function exists yet, because no
+energy dataset exists yet to fit one to. This command is the
+measurement tool that would collect it. It also cannot meaningfully
+profile a single fast kernel launch -- GPU power sensors update at
+roughly 1 Hz internally, far coarser than this project's
+millisecond-scale kernels -- so it runs the given command repeatedly
+for a sustained duration and reports the average energy per
+iteration, not a single-launch measurement.
 
 ## Status
 
@@ -110,6 +122,16 @@ This is an early-stage research prototype, not production tooling.
   a concrete, well-scoped next step.
 - **Does not yet support:** operators other than attention, or
   OpenMP/OpenMPI targets.
+- **New, and explicitly a measurement tool, not yet a predictive
+  one:** `moa-shape energy` measures real GPU energy consumption of a
+  sustained, repeated kernel run. It does not predict energy from
+  shape the way this project's existing cost functions predict
+  runtime -- that would require fitting a cost function to real
+  energy data across many configurations, which does not exist yet.
+  The integration arithmetic is independently tested against
+  hand-computable cases; the actual GPU-polling and subprocess code
+  has **not yet been run against a real GPU**, no GPU being available
+  in the environment this was written in.
 
 ## License
 
