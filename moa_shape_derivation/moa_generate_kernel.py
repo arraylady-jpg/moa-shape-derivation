@@ -19,8 +19,8 @@ than hand-edited per target.
 """
 
 from pathlib import Path
-from moa_shape_parser import MachineShape
-from moa_derive_params import derive_openacc_params
+from .moa_shape_parser import MachineShape
+from .moa_derive_params import derive_openacc_params
 
 _TEMPLATE_PATH = Path(__file__).parent / "moa_forward_openacc_template.c"
 
@@ -54,29 +54,3 @@ def generate_kernel(shape: MachineShape, head_dim: int, dtype: str,
     return generated
 
 
-if __name__ == "__main__":
-    import sys
-    from moa_shape_parser import parse_nvaccelinfo
-
-    if len(sys.argv) < 3:
-        print("Usage: python3 moa_generate_kernel.py <nvaccelinfo_output.txt> "
-              "<output.c> [--dtype fp64] [--head-dim 64]")
-        sys.exit(1)
-
-    dtype = "fp64"
-    head_dim = 64
-    if "--dtype" in sys.argv:
-        dtype = sys.argv[sys.argv.index("--dtype") + 1]
-    if "--head-dim" in sys.argv:
-        head_dim = int(sys.argv[sys.argv.index("--head-dim") + 1])
-
-    with open(sys.argv[1]) as f:
-        shape = parse_nvaccelinfo(f.read())
-
-    source = generate_kernel(shape, head_dim=head_dim, dtype=dtype)
-
-    with open(sys.argv[2], "w") as f:
-        f.write(source)
-
-    print(f"Generated {sys.argv[2]} for {shape.device_name} "
-          f"(dtype={dtype}, head_dim={head_dim})")

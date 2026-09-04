@@ -22,7 +22,7 @@ rather than being buried in automation.
 """
 
 from dataclasses import dataclass
-from moa_shape_parser import MachineShape
+from .moa_shape_parser import MachineShape
 
 
 @dataclass
@@ -107,37 +107,3 @@ def derive_openacc_params(shape: MachineShape, head_dim: int, dtype: str,
     )
 
 
-if __name__ == "__main__":
-    import sys
-    from moa_shape_parser import parse_nvaccelinfo, parse_rocminfo
-
-    if len(sys.argv) < 2:
-        print("Usage: python3 moa_derive_params.py <shape_output.txt> "
-              "[--rocm] [--dtype fp64] [--head-dim 64]")
-        sys.exit(1)
-
-    dtype = "fp64"
-    head_dim = 64
-    use_rocm = "--rocm" in sys.argv
-    if use_rocm:
-        sys.argv.remove("--rocm")
-    if "--dtype" in sys.argv:
-        dtype = sys.argv[sys.argv.index("--dtype") + 1]
-    if "--head-dim" in sys.argv:
-        head_dim = int(sys.argv[sys.argv.index("--head-dim") + 1])
-
-    with open(sys.argv[1]) as f:
-        text = f.read()
-    shape = parse_rocminfo(text) if use_rocm else parse_nvaccelinfo(text)
-
-    params = derive_openacc_params(shape, head_dim=head_dim, dtype=dtype)
-
-    print(f"Device: {shape.device_name}")
-    print(f"  Measured: {shape.sms} SMs, warp={shape.warp_size}, "
-          f"max_warps/SM={shape.max_warps_per_sm}, "
-          f"shared_mem/block={shape.shared_mem_per_block_bytes}B")
-    print(f"Derived OpenACC parameters (dtype={dtype}, head_dim={head_dim}):")
-    print(f"  num_workers({params.num_workers})")
-    print(f"  vector_length({params.vector_length})")
-    print(f"  BLOCK_M={params.block_m}, BLOCK_N={params.block_n} "
-          f"({params.tile_footprint_bytes}B of {params.shared_mem_budget_bytes}B budget)")

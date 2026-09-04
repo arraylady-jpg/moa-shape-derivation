@@ -221,20 +221,3 @@ def measure_local_amd_gpu(agent_name: str = None) -> MachineShape:
     return parse_rocminfo(result.stdout, agent_name=agent_name)
 
 
-if __name__ == "__main__":
-    import sys
-    if "--rocm" in sys.argv:
-        sys.argv.remove("--rocm")
-        if len(sys.argv) > 1:
-            with open(sys.argv[1]) as f:
-                shape = parse_rocminfo(f.read())
-        else:
-            shape = measure_local_amd_gpu()
-    elif len(sys.argv) > 1:
-        with open(sys.argv[1]) as f:
-            shape = parse_nvaccelinfo(f.read())
-    else:
-        shape = measure_local_gpu()
-    for k, v in asdict(shape).items():
-        print(f"{k:30s} {v}")
-    print(f"{'max_warps_per_sm':30s} {shape.max_warps_per_sm}")

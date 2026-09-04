@@ -12,8 +12,8 @@ this automates.
 """
 
 import unittest
-from moa_shape_parser import parse_nvaccelinfo
-from moa_derive_params import derive_openacc_params
+from moa_shape_derivation.moa_shape_parser import parse_nvaccelinfo
+from moa_shape_derivation.moa_derive_params import derive_openacc_params
 
 
 class TestMeasuredShapeMatchesHandRecordedValues(unittest.TestCase):
@@ -97,7 +97,7 @@ class TestKernelGeneration(unittest.TestCase):
     moa_derive_params.py computes independently."""
 
     def test_no_placeholders_remain(self):
-        from moa_generate_kernel import generate_kernel
+        from moa_shape_derivation.moa_generate_kernel import generate_kernel
         with open("examples/a100_real.txt") as f:
             shape = parse_nvaccelinfo(f.read())
         source = generate_kernel(shape, head_dim=64, dtype="fp64")
@@ -108,7 +108,7 @@ class TestKernelGeneration(unittest.TestCase):
         """The generator and the standalone derivation function must
         agree -- if they ever diverge, that is a real bug, not a
         stylistic difference."""
-        from moa_generate_kernel import generate_kernel
+        from moa_shape_derivation.moa_generate_kernel import generate_kernel
         with open("examples/h100_real.txt") as f:
             shape = parse_nvaccelinfo(f.read())
         params = derive_openacc_params(shape, head_dim=64, dtype="fp64")
@@ -130,7 +130,7 @@ class TestKernelGeneration(unittest.TestCase):
         if not shutil.which("gcc"):
             self.skipTest("gcc not found")
 
-        from moa_generate_kernel import generate_kernel
+        from moa_shape_derivation.moa_generate_kernel import generate_kernel
         with open("examples/v100_real.txt") as f:
             shape = parse_nvaccelinfo(f.read())
         source = generate_kernel(shape, head_dim=64, dtype="fp64")
@@ -168,7 +168,7 @@ class TestROCmParsing(unittest.TestCase):
     that is the immediate next step once cluster access allows it."""
 
     def _shape(self):
-        from moa_shape_parser import parse_rocminfo
+        from moa_shape_derivation.moa_shape_parser import parse_rocminfo
         with open("examples/rocminfo_example_gfx906.txt") as f:
             return parse_rocminfo(f.read())
 
@@ -215,7 +215,7 @@ class TestROCmParsing(unittest.TestCase):
             "  Device Type:             CPU\n"
         )
         with self.assertRaises(ValueError):
-            from moa_shape_parser import parse_rocminfo
+            from moa_shape_derivation.moa_shape_parser import parse_rocminfo
             parse_rocminfo(cpu_only)
 
 

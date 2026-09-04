@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "contributed_at_utc": "2026-09-04T16:57:41.510313Z",
+  "vendor": "NVIDIA",
+  "measurement_tool": "nvaccelinfo",
+  "python_platform_machine": "x86_64",
+  "shape": {
+    "device_name": "NVIDIA A100-SXM4-40GB",
+    "sms": 108,
+    "warp_size": 32,
+    "max_threads_per_sm": 2048,
+    "max_threads_per_block": 1024,
+    "shared_mem_per_block_bytes": 49152,
+    "l2_cache_bytes": 41943040,
+    "registers_per_block": 65536
+  }
+}
