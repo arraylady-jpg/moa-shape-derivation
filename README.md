@@ -66,10 +66,15 @@ moa_shape_derivation/
     moa_derive_params.py            Derives OpenACC parameters from a MachineShape
     moa_generate_kernel.py          Generates a complete kernel file from those parameters
     moa_forward_openacc_template.c  The kernel template (hardware-validated, values parameterized)
-    cli.py                          The moa-shape command (measure / derive / generate / contribute)
-examples/                           Real captured NVIDIA output (3 GPUs) + a documented-format AMD fixture
+    moa_energy_profiler.py          Measures real GPU energy over a sustained kernel run
+    moa_performance_predictor.py    Predicts a held-out GPU's absolute time from public specs + calibration
+    cli.py                          The moa-shape command (measure / derive / generate / contribute / energy / predict)
+examples/                           Real captured NVIDIA output (3 GPUs), a documented-format AMD fixture,
+                                     and a predict config reproducing a published held-out result exactly
 contributed_shapes/                 Community-contributed measurements (see CONTRIBUTING.md)
 test_moa_automation.py              16 automated tests, including a real compile-and-run check
+test_moa_energy_profiler.py         9 tests for the energy-integration arithmetic
+test_moa_performance_predictor.py   11 tests, including exact reproduction of published cross-machine results
 ```
 
 ## Command reference
@@ -80,6 +85,7 @@ moa-shape derive     [file] [--rocm] [--dtype fp64] [--head-dim 64]
 moa-shape generate   [file] [--rocm] -o kernel.c [--dtype fp64] [--head-dim 64]
 moa-shape contribute [file] [--rocm] [-o out.json]          # see "Help this project" above
 moa-shape energy -- <command...> [--duration 5.0]           # measure real GPU energy of a repeated kernel run
+moa-shape predict config.json                               # predict a held-out GPU's absolute time (see examples/)
 ```
 
 Omit `[file]` to measure the local GPU directly (requires
@@ -96,6 +102,20 @@ roughly 1 Hz internally, far coarser than this project's
 millisecond-scale kernels -- so it runs the given command repeatedly
 for a sustained duration and reports the average energy per
 iteration, not a single-launch measurement.
+
+`predict` is a genuinely different, harder kind of claim than
+`derive`. `derive` computes a parameter from a GPU's *own* measured
+shape and checks it against that *same* GPU's own hardware -- a
+claim this project has checked 12 independent times with zero error.
+`predict` instead estimates a GPU's *absolute* wall-clock time using
+only its public peak specs plus other GPUs' real measured timing --
+the target's own real data is never an input, by construction (see
+`moa_performance_predictor.py`'s docstring). This project's own
+validation of this harder claim, across 15 held-out points, reports
+32.5% mean error -- real signal, correct order of magnitude and
+scaling trend, but nowhere near `derive`'s zero-error track record.
+`examples/predict_h100_from_v100_a100.json` reproduces one of those
+15 points exactly, using this project's own real, published data.
 
 ## Status
 
@@ -132,6 +152,17 @@ This is an early-stage research prototype, not production tooling.
   hand-computable cases; the actual GPU-polling and subprocess code
   has **not yet been run against a real GPU**, no GPU being available
   in the environment this was written in.
+- **`moa-shape predict` reproduces this project's own published
+  cross-machine prediction results exactly** (test suite validates
+  this to the exact percentage points reported in the position
+  paper and TR, not approximately) -- but the underlying result
+  itself is honestly mixed: 32.5% mean error across 15 held-out
+  points, a categorically harder and less precise claim than
+  `derive`'s zero-error parameter checks, with error worst at small
+  problem sizes (unmodeled launch overhead) and for GPUs at either
+  end of the tested generational range (extrapolation, not
+  interpolation). See the module's docstring for the honest
+  breakdown.
 
 ## License
 

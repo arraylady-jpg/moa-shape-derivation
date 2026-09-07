@@ -27,6 +27,7 @@ from .moa_shape_parser import (
 from .moa_derive_params import derive_openacc_params
 from .moa_generate_kernel import generate_kernel
 from .moa_energy_profiler import measure_energy
+from .moa_performance_predictor import PeakSpecs, predict_held_out
 
 
 def _measure_shape(args):
@@ -135,6 +136,52 @@ def cmd_energy(args):
           f"(average over the sustained run, not a single-launch measurement)")
 
 
+def cmd_predict(args):
+    """Predict a target GPU's absolute performance using only its
+    public peak specs and calibration data from OTHER GPUs' real
+    measured timing -- the target's own real timing is never an
+    input, by design.
+
+    NOT a parameter-derivation check (see moa_derive_params.py's
+    zero-error track record for that different, easier claim). This
+    is the harder claim -- predicting an absolute wall-clock number
+    -- and this project's own validation of it (position paper,
+    Section 6.3) reports 32.5% mean error across 15 held-out points:
+    real signal, correct scaling, nowhere near zero-error. This
+    command does not pretend otherwise.
+    """
+    with open(args.config) as f:
+        config = json.load(f)
+
+    target = config["target"]
+    target_peak = PeakSpecs(
+        target["name"],
+        target["peak_flops_tflops"] * 1e12,
+        target["peak_bandwidth_gbs"] * 1e9,
+    )
+    workload = config["workload"]
+    workload_shape = (workload["B"], workload["n"], workload["d"], workload["dtype_bytes"])
+
+    calibration_gpus = []
+    for gpu in config["calibration"]:
+        peak = PeakSpecs(
+            gpu["name"], gpu["peak_flops_tflops"] * 1e12, gpu["peak_bandwidth_gbs"] * 1e9,
+        )
+        calibration_gpus.append((peak, gpu["measured_time_ms"] / 1000.0))
+
+    predicted_s = predict_held_out(target_peak, workload_shape, calibration_gpus)
+    print(f"Target: {target['name']}")
+    print(f"Workload: B={workload['B']}, n={workload['n']}, d={workload['d']}, "
+          f"dtype_bytes={workload['dtype_bytes']}")
+    print(f"Calibrated from: {', '.join(g['name'] for g in config['calibration'])}")
+    print(f"Predicted time: {predicted_s * 1000:.4f} ms")
+    if "real_measured_time_ms" in target:
+        real = target["real_measured_time_ms"]
+        err = abs(predicted_s * 1000 - real) / real * 100
+        print(f"Real measured time: {real:.4f} ms (provided for comparison)")
+        print(f"Error: {err:.2f}%")
+
+
 def main():
     parser = argparse.ArgumentParser(prog="moa-shape",
                                       description="Derive GPU kernel parameters from measured hardware shape.")
@@ -173,6 +220,10 @@ def main():
     p_energy.add_argument("--poll-interval", type=float, default=0.1,
                            help="Power-sampling poll interval in seconds (default 0.1; the underlying sensor itself updates at ~1 Hz regardless).")
     p_energy.set_defaults(func=cmd_energy)
+
+    p_predict = sub.add_parser("predict", help="Predict a held-out GPU's absolute performance from its public peak specs and other GPUs' real measured timing (NOT a parameter check -- see examples/predict_h100_from_v100_a100.json).")
+    p_predict.add_argument("config", help="Path to a JSON config specifying target, workload, and calibration GPUs.")
+    p_predict.set_defaults(func=cmd_predict)
 
     args = parser.parse_args()
     args.func(args)

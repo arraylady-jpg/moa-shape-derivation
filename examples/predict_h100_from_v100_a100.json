@@ -1,0 +1,29 @@
+{
+  "_comment": "Predicts H100's forward-pass time at n=8192 using ONLY V100 and A100's real measured data plus all three GPUs' public peak specs -- H100's own real timing (included below only for comparison) is never used to produce its own prediction. This exact configuration reproduces one of the 15 held-out points reported in this project's position paper, Section 6.3 (published error: 50.21%).",
+  "target": {
+    "name": "H100",
+    "peak_flops_tflops": 34.0,
+    "peak_bandwidth_gbs": 3350,
+    "real_measured_time_ms": 51.434
+  },
+  "workload": {
+    "B": 1,
+    "n": 8192,
+    "d": 64,
+    "dtype_bytes": 8
+  },
+  "calibration": [
+    {
+      "name": "V100",
+      "peak_flops_tflops": 7.8,
+      "peak_bandwidth_gbs": 900,
+      "measured_time_ms": 111.305
+    },
+    {
+      "name": "A100",
+      "peak_flops_tflops": 9.7,
+      "peak_bandwidth_gbs": 1555,
+      "measured_time_ms": 90.042
+    }
+  ]
+}
