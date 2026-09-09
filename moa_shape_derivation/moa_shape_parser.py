@@ -221,3 +221,89 @@ def measure_local_amd_gpu(agent_name: str = None) -> MachineShape:
     return parse_rocminfo(result.stdout, agent_name=agent_name)
 
 
+def parse_intel_query(text: str, device_name_filter: str = None) -> MachineShape:
+    """Parse the output of THIS project's own query_intel_shape.cpp
+    program (see intel_tools/query_intel_shape.cpp) into a
+    MachineShape.
+
+    UNLIKE nvaccelinfo and rocminfo, there is no single, standard,
+    vendor-provided introspection tool for Intel GPUs that reports
+    the occupancy-relevant fields this project needs. clinfo (OpenCL)
+    does not expose them; sycl-ls lists devices but not their full
+    numeric properties. This project's own minimal SYCL program
+    queries the required fields directly via Level-Zero's Intel
+    extension API and this function parses THAT program's own
+    output format -- not any pre-existing system tool's.
+
+    A further, real wrinkle discovered when this was first run for
+    real (Stampede3, Intel Data Center GPU Max 1550, September 2026):
+    SYCL's device enumeration on this system returns each physical
+    GPU TWICE -- once via an OpenCL backend, once via a Level-Zero
+    backend -- and only the Level-Zero view exposes the extended
+    occupancy fields (EU count, hardware threads per EU, SIMD width)
+    this project actually needs. This function only accepts device
+    blocks that have those extended fields present; OpenCL-backend
+    duplicates of the same physical hardware are silently skipped,
+    not treated as additional GPUs. This is the same kind of
+    multi-agent-in-one-output issue rocminfo has (CPU and GPU agents
+    together) -- a different specific cause, the same general lesson.
+    """
+    # Split on this program's own "=== Device N: <name> ===" headers.
+    device_blocks = re.split(r"=== Device \d+: ", text)[1:]  # [0] is preamble
+
+    def find_int(pattern, block):
+        m = re.search(pattern, block)
+        return int(m.group(1)) if m else None
+
+    chosen_block = None
+    chosen_name = None
+    for block in device_blocks:
+        name_match = re.match(r"([^\n]+?)\s*===", block)
+        name = name_match.group(1).strip() if name_match else None
+        if device_name_filter is not None and (name is None or device_name_filter not in name):
+            continue
+        eu_count = find_int(r"ext_intel_gpu_eu_count:\s*(\d+)", block)
+        hw_threads = find_int(r"ext_intel_gpu_hw_threads_per_eu:\s*(\d+)", block)
+        simd_width = find_int(r"ext_intel_gpu_eu_simd_width:\s*(\d+)", block)
+        if eu_count is None or hw_threads is None or simd_width is None:
+            continue  # OpenCL-backend duplicate of this same physical GPU -- skip
+        chosen_block = block
+        chosen_name = name
+        break
+
+    if chosen_block is None:
+        raise ValueError(
+            "No device block with the required extended Level-Zero "
+            "fields (ext_intel_gpu_eu_count, ext_intel_gpu_hw_threads_per_eu, "
+            "ext_intel_gpu_eu_simd_width) found"
+            + (f" matching name {device_name_filter!r}" if device_name_filter else "")
+            + ". Refusing to guess -- confirm query_intel_shape ran "
+              "successfully and its output was captured in full."
+        )
+
+    eu_count = find_int(r"ext_intel_gpu_eu_count:\s*(\d+)", chosen_block)
+    hw_threads_per_eu = find_int(r"ext_intel_gpu_hw_threads_per_eu:\s*(\d+)", chosen_block)
+    simd_width = find_int(r"ext_intel_gpu_eu_simd_width:\s*(\d+)", chosen_block)
+    max_work_group_size = find_int(r"max_work_group_size:\s*(\d+)", chosen_block)
+    local_mem_bytes = find_int(r"local_mem_size \(bytes\):\s*(\d+)", chosen_block)
+    l2_bytes = find_int(r"global_mem_cache_size \(bytes\):\s*(\d+)", chosen_block)
+
+    values = {
+        "device_name": chosen_name,
+        "sms": eu_count,
+        "warp_size": simd_width,
+        "max_threads_per_sm": (hw_threads_per_eu * simd_width) if (hw_threads_per_eu and simd_width) else None,
+        "max_threads_per_block": max_work_group_size,
+        "shared_mem_per_block_bytes": local_mem_bytes,
+        "l2_cache_bytes": l2_bytes,
+    }
+    missing = [k for k, v in values.items() if v is None]
+    if missing:
+        raise ValueError(
+            f"Intel query output missing required field(s): {missing}. "
+            f"Refusing to guess -- re-run query_intel_shape and capture its full output."
+        )
+    return MachineShape(**values)
+
+
+

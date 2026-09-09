@@ -219,5 +219,62 @@ class TestROCmParsing(unittest.TestCase):
             parse_rocminfo(cpu_only)
 
 
+class TestIntelParsing(unittest.TestCase):
+    """Validates the Intel parser against a fixture built from REAL,
+    verified data: this project's own query_intel_shape.cpp, actually
+    compiled and run on a real Intel Data Center GPU Max 1550 on
+    TACC Stampede3 (September 2026) -- the captured stdout, not a
+    guessed or documentation-only format. This makes Intel the first
+    vendor in this project's parsers validated against real hardware
+    output from the very first version written, rather than from
+    documentation alone (as NVIDIA and AMD both initially were)."""
+
+    def _shape(self):
+        from moa_shape_derivation.moa_shape_parser import parse_intel_query
+        with open("examples/intel_max1550_real.txt") as f:
+            return parse_intel_query(f.read())
+
+    def test_selects_level_zero_device_not_opencl_duplicate(self):
+        """The real captured output lists each physical GPU TWICE --
+        once via an OpenCL backend (no extended fields), once via
+        Level-Zero (has them). Confirm the parser picks a Level-Zero
+        block, not the first (OpenCL) block it encounters."""
+        shape = self._shape()
+        self.assertEqual(shape.device_name, "Intel(R) Data Center GPU Max 1550")
+        self.assertEqual(shape.max_threads_per_sm, 128)  # only set on Level-Zero blocks
+
+    def test_measured_values_match_real_captured_output(self):
+        shape = self._shape()
+        self.assertEqual(shape.sms, 512)              # EU count
+        self.assertEqual(shape.warp_size, 16)          # EU SIMD width
+        self.assertEqual(shape.max_threads_per_sm, 128)  # 8 hw threads/EU x 16
+        self.assertEqual(shape.max_threads_per_block, 1024)
+        self.assertEqual(shape.shared_mem_per_block_bytes, 131072)  # 128 KiB
+        self.assertEqual(shape.l2_cache_bytes, 201326592)  # 192 MiB
+
+    def test_derivation_produces_the_largest_tile_of_any_vendor_tested(self):
+        """A genuinely different, real result: Intel's larger local
+        memory (128 KiB, vs 48-64 KiB on every NVIDIA/AMD case tested)
+        should produce a larger tile than any of them -- evidence
+        the derivation tracks real measured capacity, not a vendor-
+        specific coincidence."""
+        shape = self._shape()
+        params = derive_openacc_params(shape, head_dim=64, dtype="fp64")
+        self.assertEqual((params.block_m, params.block_n), (32, 32))
+        self.assertGreater(params.block_m * params.block_n, 16 * 16)  # bigger than every NVIDIA case
+
+    def test_missing_extended_fields_raises_rather_than_guesses(self):
+        opencl_only = (
+            "=== Device 0: Intel(R) Data Center GPU Max 1550 ===\n"
+            "  max_compute_units: 512\n"
+            "  max_work_group_size: 1024\n"
+            "  local_mem_size (bytes): 131072\n"
+            "  global_mem_cache_size (bytes): 201326592\n"
+        )
+        with self.assertRaises(ValueError):
+            from moa_shape_derivation.moa_shape_parser import parse_intel_query
+            parse_intel_query(opencl_only)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

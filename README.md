@@ -9,7 +9,7 @@ than from tuning, search, or vendor documentation.
 ```bash
 pip install moa-shape-derivation      # once published; for now: pip install -e . from a clone
 moa-shape derive                      # measures your local NVIDIA GPU and derives kernel parameters
-moa-shape derive --rocm               # same, for a local AMD GPU
+moa-shape --rocm derive               # same, for a local AMD GPU
 ```
 
 No external dependencies -- pure Python standard library, works
@@ -26,7 +26,7 @@ can do for this project:
 
 ```bash
 moa-shape contribute            # NVIDIA
-moa-shape contribute --rocm     # AMD
+moa-shape --rocm contribute     # AMD
 ```
 
 This writes one local JSON file containing only architectural
@@ -75,17 +75,39 @@ contributed_shapes/                 Community-contributed measurements (see CONT
 test_moa_automation.py              16 automated tests, including a real compile-and-run check
 test_moa_energy_profiler.py         9 tests for the energy-integration arithmetic
 test_moa_performance_predictor.py   11 tests, including exact reproduction of published cross-machine results
+intel_tools/query_intel_shape.cpp   Minimal SYCL program: queries Intel GPU shape fields not exposed by clinfo
 ```
 
 ## Command reference
 
 ```bash
-moa-shape measure    [file] [--rocm]                       # print a shape, measured live or from a saved file
-moa-shape derive     [file] [--rocm] [--dtype fp64] [--head-dim 64]
-moa-shape generate   [file] [--rocm] -o kernel.c [--dtype fp64] [--head-dim 64]
-moa-shape contribute [file] [--rocm] [-o out.json]          # see "Help this project" above
-moa-shape energy -- <command...> [--duration 5.0]           # measure real GPU energy of a repeated kernel run
-moa-shape predict config.json                               # predict a held-out GPU's absolute time (see examples/)
+moa-shape [--rocm|--intel] measure    [file]                       # print a shape, measured live or from a saved file
+moa-shape [--rocm|--intel] derive     [file] [--dtype fp64] [--head-dim 64]
+moa-shape [--rocm|--intel] generate   [file] -o kernel.c [--dtype fp64] [--head-dim 64]
+moa-shape [--rocm|--intel] contribute [file] [-o out.json]          # see "Help this project" above
+moa-shape energy -- <command...> [--duration 5.0]                  # measure real GPU energy of a repeated kernel run
+moa-shape predict config.json                                       # predict a held-out GPU's absolute time (see examples/)
+```
+
+**`--rocm`/`--intel`, when used, must come *before* the subcommand**
+(`moa-shape --rocm derive`, not `moa-shape derive --rocm`) -- this is
+how Python's `argparse` subcommand parsing works, and is easy to get
+backwards (an earlier version of this README did, for every example,
+until real use caught it).
+
+**Intel GPUs work differently from NVIDIA/AMD**: there is no single
+standard introspection tool (nothing playing the role `nvaccelinfo`
+or `rocminfo` do). `--intel` always requires a captured output file
+-- there is no live-measurement mode. First, compile and run this
+project's own query tool on the target machine:
+```bash
+module load intel   # or your site's equivalent oneAPI environment
+icpx -fsycl intel_tools/query_intel_shape.cpp -o query_intel_shape
+./query_intel_shape > my_intel_shape.txt
+```
+then parse its captured output the same way as any other file:
+```bash
+moa-shape --intel derive my_intel_shape.txt
 ```
 
 Omit `[file]` to measure the local GPU directly (requires
@@ -133,6 +155,19 @@ This is an early-stage research prototype, not production tooling.
   16×16) -- real evidence the derivation responds to actual measured
   hardware rather than coincidentally always returning the same
   answer.
+- **A third vendor, validated on real hardware, not predicted:**
+  Intel Data Center GPU Max 1550, via this project's own
+  `intel_tools/query_intel_shape.cpp` (there is no single standard
+  Intel introspection tool the way `nvaccelinfo`/`rocminfo` are for
+  NVIDIA/AMD), run for real on TACC Stampede3. Intel's larger local
+  memory (128 KiB) produces the largest tile of any vendor tested
+  (32×32) -- the tile size tracking measured capacity exactly as
+  expected across a third, architecturally distinct vendor. A real
+  wrinkle discovered only by actually running this: SYCL enumerates
+  each physical GPU twice (once via OpenCL, once via Level-Zero), and
+  only the Level-Zero view exposes the fields this project needs --
+  the same *kind* of multi-agent-in-one-output issue `rocminfo`
+  has (CPU and GPU agents together), a different specific cause.
 - **A flagged, unresolved question for AMD specifically:** the
   `num_workers`-equivalent derivation still uses the
   `schedulers_per_sm=4` assumption carried over from NVIDIA, never

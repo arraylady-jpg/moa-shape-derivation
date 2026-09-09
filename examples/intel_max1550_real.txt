@@ -1,0 +1,35 @@
+=== Device 0: Intel(R) Data Center GPU Max 1550 ===
+  max_compute_units: 512
+  max_work_group_size: 1024
+  local_mem_size (bytes): 131072
+  global_mem_cache_size (bytes): 201326592
+
+=== Device 1: Intel(R) Data Center GPU Max 1550 ===
+  max_compute_units: 512
+  max_work_group_size: 1024
+  local_mem_size (bytes): 131072
+  global_mem_cache_size (bytes): 201326592
+
+=== Device 8: Intel(R) Data Center GPU Max 1550 ===
+  max_compute_units: 512
+  max_work_group_size: 1024
+  local_mem_size (bytes): 131072
+  global_mem_cache_size (bytes): 201326592
+  ext_intel_gpu_eu_count: 512
+  ext_intel_gpu_hw_threads_per_eu: 8
+  ext_intel_gpu_slices: 1
+  ext_intel_gpu_subslices_per_slice: 64
+  ext_intel_gpu_eu_count_per_subslice: 8
+  ext_intel_gpu_eu_simd_width: 16
+
+=== Device 9: Intel(R) Data Center GPU Max 1550 ===
+  max_compute_units: 512
+  max_work_group_size: 1024
+  local_mem_size (bytes): 131072
+  global_mem_cache_size (bytes): 201326592
+  ext_intel_gpu_eu_count: 512
+  ext_intel_gpu_hw_threads_per_eu: 8
+  ext_intel_gpu_slices: 1
+  ext_intel_gpu_subslices_per_slice: 64
+  ext_intel_gpu_eu_count_per_subslice: 8
+  ext_intel_gpu_eu_simd_width: 16

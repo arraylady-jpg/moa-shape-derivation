@@ -21,7 +21,7 @@ import sys
 from dataclasses import asdict
 
 from .moa_shape_parser import (
-    parse_nvaccelinfo, parse_rocminfo,
+    parse_nvaccelinfo, parse_rocminfo, parse_intel_query,
     measure_local_gpu, measure_local_amd_gpu,
 )
 from .moa_derive_params import derive_openacc_params
@@ -31,7 +31,17 @@ from .moa_performance_predictor import PeakSpecs, predict_held_out
 
 
 def _measure_shape(args):
-    if args.rocm:
+    if getattr(args, "intel", False):
+        if not args.input:
+            raise RuntimeError(
+                "--intel has no live-measurement mode (there is no single "
+                "standard Intel introspection tool to call automatically). "
+                "Compile and run intel_tools/query_intel_shape.cpp yourself, "
+                "capture its output to a file, and pass that file as [input]."
+            )
+        with open(args.input) as f:
+            return parse_intel_query(f.read(), device_name_filter=args.agent)
+    elif args.rocm:
         if args.input:
             with open(args.input) as f:
                 return parse_rocminfo(f.read(), agent_name=args.agent)
@@ -187,8 +197,10 @@ def main():
                                       description="Derive GPU kernel parameters from measured hardware shape.")
     parser.add_argument("--rocm", action="store_true",
                          help="Measure/parse AMD (rocminfo) rather than NVIDIA (nvaccelinfo) output.")
+    parser.add_argument("--intel", action="store_true",
+                         help="Parse Intel GPU shape from this project's own intel_tools/query_intel_shape.cpp output (no live-measurement mode -- requires [input]).")
     parser.add_argument("--agent", default=None,
-                         help="For multi-GPU nodes with --rocm: substring to match the target GPU's Name field.")
+                         help="For multi-GPU nodes with --rocm/--intel: substring to match the target GPU's name field.")
     sub = parser.add_subparsers(dest="command", required=True)
 
     p_measure = sub.add_parser("measure", help="Measure and print the local GPU's shape.")
